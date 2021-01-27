@@ -41,7 +41,6 @@ func ExampleInit() {
 	fmt.Println("Started")
 	<-g.Context().Done()
 
-	fmt.Println("Shutting down")
 	g.Wait()
 	fmt.Println("Shutdown")
 
@@ -51,7 +50,6 @@ func ExampleInit() {
 	// Hello
 	// Hello
 	// Triggering shutdown
-	// Shutting down
 	// Graceful shutdown initiated
 	// Shutting down in 3
 	// Shutting down in 2
