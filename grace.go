@@ -24,7 +24,7 @@ var (
 	ErrImmediateShutdownSignalReceived = errors.New("immediate shutdown signal received")
 )
 
-// New returns a new instance of Grace.
+// Init returns a new and initialised instance of Grace.
 func Init(ctx context.Context) *Grace {
 	ctx, cancel := context.WithCancel(ctx)
 	g := &Grace{
