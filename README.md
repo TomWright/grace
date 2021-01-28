@@ -90,8 +90,9 @@ Grace doesn't provide any runners in this module in order to reduce forced depen
 
 Implemented your own runner that you want to share? Raise a PR!
 
-- [HTTPServer](https://github.com/TomWright/gracehttpserverrunner)
-- [GRPCServer](https://github.com/TomWright/gracegrpcserverrunner)
+- [HTTP Server](https://github.com/TomWright/gracehttpserverrunner)
+- [GRPC Server](https://github.com/TomWright/gracegrpcserverrunner)
+- [Sarama Consumer + Producer](https://github.com/TomWright/gracesarama)
 
 ## Triggering Shutdowns
 
