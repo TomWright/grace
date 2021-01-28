@@ -95,9 +95,6 @@ func (l *Grace) run(runner Runner) {
 		}
 	}()
 
-	// Wait for shutdown
-	runWg.Wait()
-
 	select {
 	case runErr := <-runErrs:
 		// The runner returned an error.
