@@ -79,12 +79,24 @@ func (l *Grace) run(runner Runner) {
 
 	runWg.Add(1)
 	go func() {
-		defer runWg.Done()
+		defer func() {
+			runWg.Done()
+		}()
 		err := runner.Run(l.ctx)
 		if err != nil {
-			runErrs <- err
+			// If the context is already done, we won't be able to write to runErrs
+			// as nothing is waiting to read from it anymore.
+			// We may want to handle this slightly differently to ensure all errors are handled, but this can
+			// be safely ignored for now.
+			select {
+			case runErrs <- err:
+			default:
+			}
 		}
 	}()
+
+	// Wait for shutdown
+	runWg.Wait()
 
 	select {
 	case runErr := <-runErrs:
