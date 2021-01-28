@@ -1,7 +1,7 @@
 [![Go Report Card](https://goreportcard.com/badge/github.com/TomWright/grace)](https://goreportcard.com/report/github.com/TomWright/grace)
 [![PkgGoDev](https://pkg.go.dev/badge/github.com/tomwright/grace)](https://pkg.go.dev/github.com/tomwright/grace)
 ![Test](https://github.com/TomWright/grace/workflows/Test/badge.svg)
-[![codecov](https://codecov.io/gh/TomWright/grace/branch/master/graph/badge.svg)](https://codecov.io/gh/TomWright/grace)
+[![codecov](https://codecov.io/gh/TomWright/grace/branch/main/graph/badge.svg)](https://codecov.io/gh/TomWright/grace)
 ![GitHub License](https://img.shields.io/github/license/TomWright/grace)
 ![GitHub tag (latest by date)](https://img.shields.io/github/v/tag/TomWright/grace?label=latest%20release)
 
