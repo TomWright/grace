@@ -91,3 +91,36 @@ func TestGrace_Run_Error(t *testing.T) {
 		return
 	}
 }
+
+func TestGrace_Run_Panic(t *testing.T) {
+	found := false
+	g := grace.Init(context.Background())
+	g.ErrHandler = func(err error) bool {
+		if e, ok := err.(grace.RecoveredPanicError); ok {
+			if fmt.Sprintf("%v", e.Err) == "whoops" {
+				found = true
+			} else {
+				t.Errorf("unexpected error: %T: %v", err, err)
+			}
+		} else {
+			t.Errorf("unexpected error type: %T: %v", err, err)
+		}
+		return true
+	}
+
+	g.Run(grace.RunnerFunc(func(ctx context.Context) error {
+		panic("whoops")
+		return nil
+	}))
+
+	select {
+	case <-g.Context().Done():
+	case <-time.After(time.Second):
+		t.Errorf("did not send shutdown signal after 1s")
+		g.Shutdown()
+	}
+
+	if !found {
+		t.Errorf("panic error not found")
+	}
+}

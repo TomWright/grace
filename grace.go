@@ -3,9 +3,11 @@ package grace
 import (
 	"context"
 	"errors"
+	"fmt"
 	"log"
 	"os"
 	"os/signal"
+	"runtime/debug"
 	"sync"
 	"syscall"
 )
@@ -24,16 +26,35 @@ var (
 	ErrImmediateShutdownSignalReceived = errors.New("immediate shutdown signal received")
 )
 
+// RecoveredPanicError represents a recovered panic.
+type RecoveredPanicError struct {
+	// Err is the recovered error.
+	Err interface{}
+	// Stack is the stack trace from the recover.
+	Stack []byte
+}
+
+// Error returns the recovered panic as a string
+func (p RecoveredPanicError) Error() string {
+	return fmt.Sprintf("%v", p.Err)
+}
+
 // Init returns a new and initialised instance of Grace.
-func Init(ctx context.Context) *Grace {
+func Init(ctx context.Context, options ...InitOption) *Grace {
 	ctx, cancel := context.WithCancel(ctx)
 	g := &Grace{
-		wg:         &sync.WaitGroup{},
-		ctx:        ctx,
-		cancelFn:   cancel,
-		errCh:      make(chan error),
-		ErrHandler: DefaultErrorHandler,
+		wg:       &sync.WaitGroup{},
+		ctx:      ctx,
+		cancelFn: cancel,
+		errCh:    make(chan error),
+		LogFn:    log.Printf,
 	}
+	g.ErrHandler = DefaultErrorHandler(g)
+
+	for _, option := range options {
+		option.Apply(g)
+	}
+
 	go g.handleErrors()
 	go g.handleShutdownSignals()
 	return g
@@ -43,6 +64,8 @@ func Init(ctx context.Context) *Grace {
 type Grace struct {
 	// ErrHandler is the active error handler grace will pass errors to.
 	ErrHandler ErrHandlerFn
+	// LogFn is the log function that grace will use.
+	LogFn func(format string, v ...interface{})
 
 	wg       *sync.WaitGroup
 	ctx      context.Context
@@ -71,6 +94,19 @@ func (l *Grace) Run(runner Runner) {
 	go l.run(runner)
 }
 
+// runRunner executes the given runner and returns any panics as a RecoveredPanicError.
+// If a runner panics it will cause a graceful shutdown.
+func (l *Grace) runRunner(ctx context.Context, runner Runner) (err error) {
+	defer func() {
+		if r := recover(); r != nil {
+			err = RecoveredPanicError{Err: r, Stack: debug.Stack()}
+		}
+	}()
+	err = nil
+	err = runner.Run(ctx)
+	return
+}
+
 func (l *Grace) run(runner Runner) {
 	defer l.wg.Done()
 
@@ -82,7 +118,7 @@ func (l *Grace) run(runner Runner) {
 		defer func() {
 			runWg.Done()
 		}()
-		err := runner.Run(l.ctx)
+		err := l.runRunner(l.ctx, runner)
 		if err != nil {
 			// If the context is already done, we won't be able to write to runErrs
 			// as nothing is waiting to read from it anymore.
@@ -124,16 +160,20 @@ func (l *Grace) handleShutdownSignals() {
 	}()
 }
 
-// DefaultErrorHandler is a standard error handler that will log errors and trigger a shutdown.
-func DefaultErrorHandler(err error) bool {
-	if err == ErrImmediateShutdownSignalReceived {
-		os.Exit(1)
+// DefaultErrorHandler returns a standard error handler that will log errors and trigger a shutdown.
+func DefaultErrorHandler(g *Grace) func(err error) bool {
+	return func(err error) bool {
+		if err == ErrImmediateShutdownSignalReceived {
+			os.Exit(1)
+		}
+
+		if g.LogFn != nil {
+			g.LogFn("default error handler: %s\n", err.Error())
+		}
+
+		// Always shutdown on error.
+		return true
 	}
-
-	log.Printf("default error handler: %s", err.Error())
-
-	// Always shutdown on error.
-	return true
 }
 
 func (l *Grace) handleErrors() {
@@ -149,4 +189,26 @@ func (l *Grace) handleErrors() {
 // Shutdown will start a manual shutdown.
 func (l *Grace) Shutdown() {
 	l.errCh <- ErrShutdownRequestReceived
+}
+
+// InitOption allows you to modify the way grace is initialised.
+type InitOption interface {
+	// Apply allows you to apply options to the grace instance as it is being initialised.
+	Apply(g *Grace)
+}
+
+type initOptionFn struct {
+	apply func(g *Grace)
+}
+
+// Apply allows you to apply options to the grace instance as it is being initialised.
+func (o *initOptionFn) Apply(g *Grace) {
+	o.apply(g)
+}
+
+// InitOptionFn returns an InitOption that applies the given function.
+func InitOptionFn(fn func(g *Grace)) InitOption {
+	return &initOptionFn{
+		apply: fn,
+	}
 }

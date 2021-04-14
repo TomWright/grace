@@ -76,6 +76,24 @@ func main() {
 }
 ```
 
+## Options
+
+Grace allows you to modify the way it is initialised using `InitOption`s.
+
+```go
+g := grace.Init(
+  context.Background(),
+  grace.InitOptionFn(func(g *grace.Grace) {
+    g.LogFn = log.Printf
+    g.ErrHandler = func(err error) bool {
+    	g.LogFn("something terrible went wrong: %s", err.Error())
+    	return true
+    }
+  })
+)
+```
+
+
 ## Runners
 
 Grace implements logic to execute and gracefully shutdown any number of `Runner`s.
